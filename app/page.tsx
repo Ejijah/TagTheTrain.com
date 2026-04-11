@@ -57,7 +57,6 @@ export default function TrainPage() {
 
   // 3. Handle $5 Cart Purchase
   const handleBuyCart = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Determine the next cart ID based on total real database rows + the 3 defaults
     await processCheckout(e, cars.length + 4, 5.00); 
     if (cartFileInputRef.current) cartFileInputRef.current.value = "";
   };
@@ -109,7 +108,6 @@ export default function TrainPage() {
     }
   };
 
-  // Filter out any blank database rows from past testing
   const validCars = cars.filter(car => car.image_url && car.image_url.trim() !== '');
 
   return (
@@ -146,10 +144,9 @@ export default function TrainPage() {
           animation: glimmer 2.5s infinite;
         }
 
-        /* Realistic Wheel CSS */
         .realistic-wheel {
           border-radius: 50%;
-          border: 5px solid #1f2937; /* Dark Tire */
+          border: 5px solid #1f2937;
           background: repeating-conic-gradient(from 0deg, #9ca3af 0deg 30deg, #6b7280 30deg 60deg);
           box-shadow: inset 0 0 8px rgba(0,0,0,0.8);
           position: relative;
@@ -171,7 +168,6 @@ export default function TrainPage() {
       {/* --- HEADER & CONTROLS --- */}
       <div className="absolute top-0 left-0 w-full h-32 z-50 pointer-events-none">
         
-        {/* Logo (Top Left) */}
         <div className="absolute top-6 left-6">
           <h1 className="text-4xl font-black text-gray-900 tracking-tighter drop-shadow-md">TagTheTrain</h1>
           <p className="font-bold text-gray-700 bg-white/50 block w-max px-2 py-1 rounded mt-1 shadow-sm">
@@ -179,7 +175,6 @@ export default function TrainPage() {
           </p>
         </div>
         
-        {/* Centered Buy Button */}
         <div className="absolute top-6 left-1/2 transform -translate-x-1/2 flex flex-col items-center pointer-events-auto">
           <input type="file" accept="image/png, image/jpeg" className="hidden" ref={cartFileInputRef} onChange={handleBuyCart} />
           <input type="file" accept="image/png, image/jpeg" className="hidden" ref={tagFileInputRef} onChange={handleTagUpload} />
@@ -202,16 +197,14 @@ export default function TrainPage() {
       <div ref={scrollRef} className="flex-grow flex items-end pb-24 relative overflow-x-auto no-scrollbar pointer-events-auto">
         <div className="flex items-end pl-[20vw] pr-[50vw]">
 
-          {/* 1. MAPPED DB CARTS (Filtered to block blank rows) */}
+          {/* 1. MAPPED DB CARTS */}
           {validCars.map((car, index) => (
             <div key={car.id} className="relative flex items-end shrink-0 animate-chugga group cursor-pointer" style={{ animationDelay: `${(index + 1) * 0.05}s` }} onClick={() => handleTagClick(car.id)}>
-              <div className="w-4 h-2 bg-gray-800 mb-4 shrink-0"></div>
+              <div className="w-6 h-2 bg-gray-800 mb-4 shrink-0"></div>
               
               <div className="w-40 h-24 bg-gray-200 rounded-md relative shadow-md flex items-center justify-center border-b-4 border-gray-800 overflow-hidden group-hover:brightness-110 transition-all">
-                {/* Full Cart Image */}
                 <img src={car.image_url} alt={`Cart ${car.id}`} className="w-full h-full object-cover" />
                 
-                {/* Hover overlay for Tagging */}
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity z-20">
                   <span className="text-white font-black text-sm drop-shadow-md">Tag Cart - $1</span>
                 </div>
@@ -224,17 +217,29 @@ export default function TrainPage() {
             </div>
           ))}
 
-          {/* 2. STARTER CARTS (Exactly 3, evenly spaced, no text) */}
+          {/* 2. STARTER CARTS */}
           {[
-            { id: 'starter-3', color: 'bg-gradient-to-br from-purple-500 to-purple-800' },
-            { id: 'starter-2', color: 'bg-gradient-to-br from-blue-500 to-blue-800' },
-            { id: 'starter-1', color: 'bg-gradient-to-br from-red-500 to-red-800' },
+            { id: 'starter-3', content: null, color: 'bg-gradient-to-br from-purple-500 to-purple-800' },
+            { id: 'starter-2', content: null, color: 'bg-gradient-to-br from-blue-500 to-blue-800' },
+            { 
+              id: 'starter-1', 
+              content: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?ixlib=rb-1.2.1&auto=format&fit=crop&w=400&q=80', // Pineapple Pizza
+              color: 'bg-gray-200' 
+            },
           ].map((starter) => (
             <div key={starter.id} className="relative flex items-end shrink-0 animate-chugga group cursor-pointer" style={{ animationDelay: '0.1s' }} onClick={() => handleTagClick(starter.id)}>
-              <div className="w-4 h-2 bg-gray-800 mb-4 shrink-0"></div>
+              {/* Connector */}
+              <div className="w-6 h-2 bg-gray-800 mb-4 shrink-0"></div>
               
               <div className={`w-40 h-24 ${starter.color} rounded-md relative shadow-md flex items-center justify-center border-b-4 border-gray-900 border-t border-white/20 overflow-hidden group-hover:brightness-125 transition-all`}>
                 
+                {/* The image or the Faint $1 Tag Text */}
+                {starter.content ? (
+                  <img src={starter.content} alt="Controversial Cart" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-white/20 font-black text-3xl uppercase tracking-widest rotate-[-10deg] pointer-events-none drop-shadow-sm">$1 TAG</span>
+                )}
+
                 {/* Hover overlay for Tagging */}
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity z-20">
                   <span className="text-white font-black text-sm drop-shadow-md">Tag Cart - $1</span>
@@ -249,8 +254,10 @@ export default function TrainPage() {
           ))}
 
           {/* 3. THE GOLD ENGINE */}
-          <div id="engine" className="relative animate-chugga z-20 flex flex-col items-end shrink-0">
-            <div className="w-8 h-2 bg-gray-800 absolute left-[-32px] bottom-4 shrink-0 z-0"></div>
+          <div id="engine" className="relative animate-chugga z-20 flex flex-col items-end shrink-0 ml-2">
+            
+            {/* Extended spacing connector directly behind the engine */}
+            <div className="w-6 h-2 bg-gray-800 absolute left-[-20px] bottom-4 shrink-0 z-0"></div>
             
             {/* Steam Particles */}
             <div className="absolute -top-4 right-10 w-4 h-4 pointer-events-none z-0">
@@ -266,7 +273,6 @@ export default function TrainPage() {
             <div className="w-32 h-24 bg-gradient-to-br from-yellow-300 via-yellow-500 to-yellow-600 rounded-tl-3xl rounded-tr-xl flex flex-col justify-end p-2 relative shadow-lg border-b-4 border-yellow-800 border-t border-white/60">
               
               <div className="w-12 h-10 bg-sky-200/80 absolute right-2 top-2 rounded-sm border-4 border-yellow-800 z-30 shadow-inner"></div>
-              
               <div className="w-full h-2 bg-gray-900 absolute bottom-6 left-0 z-20 shadow-sm"></div>
               
               <div className="absolute -bottom-4 flex justify-between w-full px-2 z-10">
