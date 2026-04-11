@@ -11,11 +11,13 @@ export default function TrainPage() {
   const [cars, setCars] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
   const [steamParticles, setSteamParticles] = useState<any[]>([]);
+  const [taggingCarId, setTaggingCarId] = useState<string | number | null>(null);
   
   const scrollRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cartFileInputRef = useRef<HTMLInputElement>(null);
+  const tagFileInputRef = useRef<HTMLInputElement>(null);
 
-  // 1. Generate Steam Particles for the Engine
+  // 1. Generate Steam Particles
   useEffect(() => {
     const interval = setInterval(() => {
       setSteamParticles((prev) => [
@@ -29,10 +31,9 @@ export default function TrainPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // 2. Fetch User-Bought Carts from Supabase
+  // 2. Fetch User Carts from Supabase
   useEffect(() => {
     const fetchCars = async () => {
-      // Order descending: Newest carts load on the far left
       const { data, error } = await supabase.from('train_cars').select('*').order('id', { ascending: false });
       if (error) console.error("DB Error:", error);
       if (data) {
@@ -47,15 +48,35 @@ export default function TrainPage() {
     const channel = supabase
       .channel('train_updates')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'train_cars' }, () => {
-        fetchCars(); // Refresh the whole train on any update
+        fetchCars();
       })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  // 3. Handle the "Buy Cart" Upload & Checkout
+  // 3. Handle $5 Cart Purchase
   const handleBuyCart = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    await processCheckout(e, cars.length + 4, 5.00); // +4 because 3 defaults + engine
+    if (cartFileInputRef.current) cartFileInputRef.current.value = "";
+  };
+
+  // 4. Handle $1 Tag Purchase
+  const handleTagClick = (carId: string | number) => {
+    if (uploading) return;
+    setTaggingCarId(carId);
+    tagFileInputRef.current?.click();
+  };
+
+  const handleTagUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!taggingCarId) return;
+    await processCheckout(e, taggingCarId, 1.00);
+    if (tagFileInputRef.current) tagFileInputRef.current.value = "";
+    setTaggingCarId(null);
+  };
+
+  // Universal Checkout Logic
+  const processCheckout = async (e: React.ChangeEvent<HTMLInputElement>, carId: string | number, price: number) => {
     try {
       setUploading(true);
       const file = e.target.files?.[0];
@@ -64,38 +85,26 @@ export default function TrainPage() {
       const fileExt = file.name.split('.').pop();
       const fileName = `${Math.random()}.${fileExt}`;
       
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('train-images')
-        .upload(fileName, file);
-
-      if (uploadError) {
-        alert('Failed to upload image.');
-        return;
-      }
+      const { error: uploadError } = await supabase.storage.from('train-images').upload(fileName, file);
+      if (uploadError) throw new Error('Upload failed');
 
       const { data: publicUrlData } = supabase.storage.from('train-images').getPublicUrl(fileName);
       const imageUrl = publicUrlData.publicUrl;
-
-      // Pass the new car ID to checkout
-      const newCarId = cars.length + 1;
       
       const response = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ carId: newCarId, imageUrl, price: 5.00 }),
+        body: JSON.stringify({ carId, imageUrl, price }),
       });
 
       if (!response.ok) throw new Error("Checkout API error.");
-
       const { url } = await response.json();
-      window.location.href = url; // Send them to Stripe!
-
+      window.location.href = url;
     } catch (error) {
       alert('Error connecting to checkout.');
       console.error(error);
     } finally {
       setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = ""; // Reset input
     }
   };
 
@@ -119,39 +128,38 @@ export default function TrainPage() {
           0% { opacity: 0.8; transform: translate(0, 0) scale(1); }
           100% { opacity: 0; transform: translate(-50px, -100px) scale(3); }
         }
-        /* Machine Gun Animations */
-        @keyframes recoil {
-          0%, 100% { transform: translateX(0); }
-          50% { transform: translateX(-3px); }
-        }
-        @keyframes shoot {
-          0%, 100% { opacity: 0; transform: scale(0.5); }
-          50% { opacity: 1; transform: scale(1.5); }
-        }
-        @keyframes bullet1 {
-          0% { transform: translate(0, 0); opacity: 1; }
-          100% { transform: translate(150px, 10px); opacity: 0; }
-        }
-        @keyframes bullet2 {
-          0% { transform: translate(0, 0); opacity: 1; }
-          100% { transform: translate(150px, -5px); opacity: 0; }
-        }
-        @keyframes bullet3 {
-          0% { transform: translate(0, 0); opacity: 1; }
-          100% { transform: translate(150px, 5px); opacity: 0; }
+        @keyframes glimmer {
+          0% { transform: translateX(-150%) skewX(-15deg); }
+          100% { transform: translateX(150%) skewX(-15deg); }
         }
 
         .animate-chugga { animation: chugga 0.4s infinite ease-in-out; }
-        .animate-wheel { animation: wheelSpin 0.8s infinite linear; }
+        .animate-wheel { animation: wheelSpin 0.6s infinite linear; }
         .animate-track { animation: trackMove 0.4s infinite linear; }
         .steam-particle { animation: steamFloat 2s forwards ease-out; }
         
-        .animate-recoil { animation: recoil 0.08s infinite; }
-        .animate-shoot { animation: shoot 0.08s infinite; }
-        .animate-bullet1 { animation: bullet1 0.2s infinite linear 0s; }
-        .animate-bullet2 { animation: bullet2 0.2s infinite linear 0.05s; }
-        .animate-bullet3 { animation: bullet3 0.2s infinite linear 0.1s; }
-        
+        .glimmer-effect {
+          animation: glimmer 2.5s infinite;
+        }
+
+        /* Realistic Wheel CSS */
+        .realistic-wheel {
+          border-radius: 50%;
+          border: 5px solid #1f2937; /* Dark Tire */
+          background: repeating-conic-gradient(from 0deg, #9ca3af 0deg 30deg, #6b7280 30deg 60deg);
+          box-shadow: inset 0 0 8px rgba(0,0,0,0.8);
+          position: relative;
+        }
+        .realistic-wheel::after {
+          content: '';
+          position: absolute;
+          top: 50%; left: 50%;
+          transform: translate(-50%, -50%);
+          width: 8px; height: 8px;
+          background: #374151;
+          border-radius: 50%;
+        }
+
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}} />
@@ -159,30 +167,27 @@ export default function TrainPage() {
       {/* --- HEADER & CONTROLS --- */}
       <div className="absolute top-0 left-0 w-full p-6 z-50 flex justify-between items-start pointer-events-none">
         <div>
-          <h1 className="text-4xl font-black text-gray-900 tracking-tighter drop-shadow-md">TagTheTrain</h1>
-          <p className="font-bold text-gray-700 bg-white/50 inline-block px-2 py-1 rounded mt-1 shadow-sm">
-            {cars.length + 2} / 100 Carts Hooked
+          {/* Logo animates with the train now! */}
+          <h1 className="text-4xl font-black text-gray-900 tracking-tighter drop-shadow-md animate-chugga inline-block">TagTheTrain</h1>
+          <p className="font-bold text-gray-700 bg-white/50 block w-max px-2 py-1 rounded mt-1 shadow-sm">
+            {cars.length + 3} / 100 Carts Hooked
           </p>
         </div>
         
         <div className="flex flex-col items-end pointer-events-auto">
-          <input 
-            type="file" 
-            accept="image/png, image/jpeg" 
-            className="hidden" 
-            ref={fileInputRef}
-            onChange={handleBuyCart} 
-            disabled={uploading || cars.length >= 98} 
-          />
+          <input type="file" accept="image/png, image/jpeg" className="hidden" ref={cartFileInputRef} onChange={handleBuyCart} />
+          <input type="file" accept="image/png, image/jpeg" className="hidden" ref={tagFileInputRef} onChange={handleTagUpload} />
           
+          {/* Popping Green Glimmery Button */}
           <button 
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading || cars.length >= 98}
-            className="bg-black text-white px-6 py-4 rounded-xl font-bold text-lg hover:scale-105 active:scale-95 transition-all shadow-xl disabled:bg-gray-400 flex items-center gap-2"
+            onClick={() => cartFileInputRef.current?.click()}
+            disabled={uploading || cars.length >= 97}
+            className="relative overflow-hidden bg-green-500 hover:bg-green-400 text-white px-8 py-4 rounded-xl font-black text-lg hover:scale-110 active:scale-95 transition-all shadow-[0_0_20px_rgba(34,197,94,0.6)] disabled:bg-gray-400 flex items-center gap-2 group"
           >
-            {uploading ? 'Uploading...' : cars.length >= 98 ? "Train Full!" : "Buy Cart - $5.00"}
+            <div className="absolute inset-0 w-1/2 h-full bg-white/40 glimmer-effect z-10 pointer-events-none"></div>
+            <span className="relative z-20">{uploading ? 'Uploading...' : 'Buy New Cart - $5'}</span>
           </button>
-          <p className="text-xs font-bold text-gray-600 mt-2">Upload your image to buy a cart</p>
+          <p className="text-xs font-bold text-gray-700 mt-2 bg-white/40 px-2 py-1 rounded">Or click a cart below to Tag it for $1</p>
         </div>
       </div>
 
@@ -190,49 +195,55 @@ export default function TrainPage() {
       <div ref={scrollRef} className="flex-grow flex items-end pb-24 relative overflow-x-auto no-scrollbar pointer-events-auto">
         <div className="flex items-end pl-[20vw] pr-[50vw]">
 
-          {/* 1. MAPPED DB CARTS (Newest on the far left) */}
+          {/* 1. MAPPED DB CARTS (Whole cart purchases) */}
           {cars.map((car, index) => (
-            <div key={car.id} className="relative flex items-end shrink-0 animate-chugga" style={{ animationDelay: `${(index + 1) * 0.05}s` }}>
+            <div key={car.id} className="relative flex items-end shrink-0 animate-chugga group cursor-pointer" style={{ animationDelay: `${(index + 1) * 0.05}s` }} onClick={() => handleTagClick(car.id)}>
               <div className="w-4 h-2 bg-gray-800 mb-4 shrink-0"></div>
-              <div className="w-40 h-24 bg-white rounded-md relative shadow-md flex items-center justify-center border-b-4 border-gray-800 overflow-hidden">
+              
+              <div className="w-40 h-24 bg-gray-200 rounded-md relative shadow-md flex items-center justify-center border-b-4 border-gray-800 overflow-hidden group-hover:brightness-110 transition-all">
+                {/* Full Cart Image */}
                 <img src={car.image_url} alt={`Cart ${car.id}`} className="w-full h-full object-cover" />
-                <div className="absolute top-1 left-1 bg-black/60 text-white text-[10px] font-bold px-1.5 py-0.5 rounded backdrop-blur-sm">
-                  #{car.id + 2}
+                
+                {/* Hover overlay for Tagging */}
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity z-20">
+                  <span className="text-white font-black text-sm drop-shadow-md">Tag Cart - $1</span>
                 </div>
+
                 <div className="absolute -bottom-3 flex justify-between w-full px-4 z-10">
-                  <div className="w-8 h-8 rounded-full border-4 border-gray-400 bg-gray-800 animate-wheel border-dashed"></div>
-                  <div className="w-8 h-8 rounded-full border-4 border-gray-400 bg-gray-800 animate-wheel border-dashed"></div>
+                  <div className="w-8 h-8 realistic-wheel animate-wheel"></div>
+                  <div className="w-8 h-8 realistic-wheel animate-wheel"></div>
                 </div>
               </div>
             </div>
           ))}
 
-          {/* 2. STARTER CART #2 (Static) */}
-          <div className="relative flex items-end shrink-0 animate-chugga" style={{ animationDelay: '0.1s' }}>
-            {cars.length > 0 && <div className="w-4 h-2 bg-gray-800 mb-4 shrink-0"></div>}
-            <div className="w-40 h-24 bg-gray-700 rounded-md relative shadow-md flex items-center justify-center border-b-4 border-gray-900">
-              <span className="text-gray-400 font-bold uppercase tracking-widest text-sm">Cart #2</span>
-              <div className="absolute -bottom-3 flex justify-between w-full px-4 z-10">
-                <div className="w-8 h-8 rounded-full border-4 border-gray-400 bg-gray-800 animate-wheel border-dashed"></div>
-                <div className="w-8 h-8 rounded-full border-4 border-gray-400 bg-gray-800 animate-wheel border-dashed"></div>
+          {/* 2. STARTER CARTS (Equally spaced, different cool colors) */}
+          {[
+            { id: 'starter-3', color: 'bg-gradient-to-br from-purple-500 to-purple-800' },
+            { id: 'starter-2', color: 'bg-gradient-to-br from-blue-500 to-blue-800' },
+            { id: 'starter-1', color: 'bg-gradient-to-br from-red-500 to-red-800' },
+          ].map((starter, i) => (
+            <div key={starter.id} className="relative flex items-end shrink-0 animate-chugga group cursor-pointer" style={{ animationDelay: '0.1s' }} onClick={() => handleTagClick(starter.id)}>
+              <div className="w-4 h-2 bg-gray-800 mb-4 shrink-0"></div>
+              
+              <div className={`w-40 h-24 ${starter.color} rounded-md relative shadow-md flex items-center justify-center border-b-4 border-gray-900 border-t border-white/20 overflow-hidden group-hover:brightness-125 transition-all`}>
+                
+                <span className="text-white/30 font-black uppercase tracking-widest text-xl rotate-[-5deg]">Cart {3 - i}</span>
+
+                {/* Hover overlay for Tagging */}
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity z-20">
+                  <span className="text-white font-black text-sm drop-shadow-md">Tag Cart - $1</span>
+                </div>
+
+                <div className="absolute -bottom-3 flex justify-between w-full px-4 z-10">
+                  <div className="w-8 h-8 realistic-wheel animate-wheel"></div>
+                  <div className="w-8 h-8 realistic-wheel animate-wheel"></div>
+                </div>
               </div>
             </div>
-          </div>
+          ))}
 
-          {/* 3. STARTER CART #1 (Static Coal Cart) */}
-          <div className="relative flex items-end shrink-0 animate-chugga" style={{ animationDelay: '0.05s' }}>
-            <div className="w-4 h-2 bg-gray-800 mb-4 shrink-0"></div>
-            <div className="w-32 h-16 bg-gray-800 rounded-md relative shadow-md flex items-end justify-center border-b-4 border-black">
-              {/* Fake coal pile */}
-              <div className="absolute top-[-10px] w-24 h-12 bg-gray-900 rounded-t-full"></div>
-              <div className="absolute -bottom-3 flex justify-between w-full px-2 z-10">
-                <div className="w-8 h-8 rounded-full border-4 border-gray-400 bg-gray-800 animate-wheel border-dashed"></div>
-                <div className="w-8 h-8 rounded-full border-4 border-gray-400 bg-gray-800 animate-wheel border-dashed"></div>
-              </div>
-            </div>
-          </div>
-
-          {/* 4. THE ENGINE (Always at the far right front) */}
+          {/* 3. THE ENGINE */}
           <div id="engine" className="relative animate-chugga z-20 flex flex-col items-end shrink-0">
             <div className="w-4 h-2 bg-gray-800 absolute left-[-16px] bottom-4 shrink-0"></div>
             
@@ -246,54 +257,32 @@ export default function TrainPage() {
 
             <div className="w-6 h-12 bg-gray-800 mr-8 rounded-t-sm z-10"></div>
             
-            <div className="w-32 h-24 bg-gray-900 rounded-tl-3xl rounded-tr-xl flex flex-col justify-end p-2 relative shadow-lg border-b-4 border-black">
+            <div className="w-32 h-24 bg-gray-900 rounded-tl-3xl rounded-tr-xl flex flex-col justify-end p-2 relative shadow-lg border-b-4 border-black border-t border-white/20">
               
-              {/* WINDOW WITH MACHINE GUN GUY */}
-              <div className="w-12 h-12 bg-sky-200 absolute right-2 top-2 rounded-sm border-2 border-gray-700 overflow-visible z-30">
-                
-                {/* The Stickman Guy (Recoil Animation) */}
-                <div className="absolute bottom-0 right-2 w-full h-full animate-recoil">
-                  {/* Head */}
-                  <div className="w-4 h-4 bg-gray-900 rounded-full absolute bottom-5 left-1"></div>
-                  {/* Body */}
-                  <div className="w-5 h-6 bg-gray-900 rounded-t-md absolute bottom-0 left-0.5"></div>
-                  
-                  {/* The Gun */}
-                  <div className="w-10 h-1.5 bg-black absolute bottom-4 left-4 z-40">
-                    {/* Muzzle Flash */}
-                    <div className="absolute -right-3 -top-1.5 w-4 h-4 bg-yellow-400 rounded-full animate-shoot blur-[1px]"></div>
-                  </div>
-                </div>
-
-                {/* Flying Bullets */}
-                <div className="absolute bottom-4 left-10 w-2 h-1 bg-yellow-500 animate-bullet1 opacity-0 z-50 shadow-sm"></div>
-                <div className="absolute bottom-4 left-10 w-2 h-1 bg-yellow-500 animate-bullet2 opacity-0 z-50 shadow-sm"></div>
-                <div className="absolute bottom-4 left-10 w-2 h-1 bg-yellow-500 animate-bullet3 opacity-0 z-50 shadow-sm"></div>
-              </div>
-
-              <div className="w-full h-2 bg-yellow-500 absolute bottom-6 left-0 z-20"></div>
+              <div className="w-12 h-10 bg-sky-200/80 absolute right-2 top-2 rounded-sm border-4 border-gray-700 z-30 shadow-inner"></div>
+              <div className="w-full h-2 bg-yellow-500 absolute bottom-6 left-0 z-20 shadow-sm"></div>
               
               <div className="absolute -bottom-4 flex justify-between w-full px-2 z-10">
-                <div className="w-10 h-10 rounded-full border-4 border-gray-400 bg-gray-800 animate-wheel border-dashed"></div>
-                <div className="w-10 h-10 rounded-full border-4 border-gray-400 bg-gray-800 animate-wheel border-dashed"></div>
+                <div className="w-10 h-10 realistic-wheel animate-wheel"></div>
+                <div className="w-10 h-10 realistic-wheel animate-wheel"></div>
               </div>
             </div>
-            <div className="w-10 h-10 bg-gray-700 absolute -right-6 bottom-0 rotate-45 transform translate-y-2 -z-10"></div>
+            <div className="w-10 h-10 bg-gray-700 absolute -right-6 bottom-0 rotate-45 transform translate-y-2 -z-10 shadow-lg"></div>
           </div>
 
         </div>
       </div>
 
       {/* --- THE GROUND & MOVING TRACK --- */}
-      <div className="h-24 w-full bg-green-600 absolute bottom-0 z-10 border-t-4 border-green-800 pointer-events-none">
+      <div className="h-24 w-full bg-green-600 absolute bottom-0 z-10 border-t-4 border-green-800 pointer-events-none shadow-inner">
         <div 
-          className="w-full h-4 absolute top-0 left-0 animate-track"
+          className="w-full h-5 absolute top-0 left-0 animate-track"
           style={{
-            backgroundImage: 'repeating-linear-gradient(90deg, #4b5563 0px, #4b5563 10px, transparent 10px, transparent 40px)',
-            borderTop: '4px solid #1f2937'
+            backgroundImage: 'repeating-linear-gradient(90deg, #4b5563 0px, #4b5563 15px, transparent 15px, transparent 40px)',
+            borderTop: '6px solid #1f2937'
           }}
         ></div>
-        <p className="text-green-800 font-bold text-center mt-8 opacity-50 uppercase tracking-widest text-sm">Drag left/right to view the whole train</p>
+        <p className="text-green-900 font-black text-center mt-8 opacity-40 uppercase tracking-widest text-sm drop-shadow-sm">Drag to view the train</p>
       </div>
 
     </main>
