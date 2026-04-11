@@ -57,7 +57,8 @@ export default function TrainPage() {
 
   // 3. Handle $5 Cart Purchase
   const handleBuyCart = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    await processCheckout(e, cars.length + 4, 5.00); // +4 because 3 defaults + engine
+    // Determine the next cart ID based on total real database rows + the 3 defaults
+    await processCheckout(e, cars.length + 4, 5.00); 
     if (cartFileInputRef.current) cartFileInputRef.current.value = "";
   };
 
@@ -107,6 +108,9 @@ export default function TrainPage() {
       setUploading(false);
     }
   };
+
+  // Filter out any blank database rows from past testing
+  const validCars = cars.filter(car => car.image_url && car.image_url.trim() !== '');
 
   return (
     <main className="min-h-screen bg-sky-200 overflow-hidden relative flex flex-col font-sans selection:bg-yellow-400">
@@ -171,7 +175,7 @@ export default function TrainPage() {
         <div className="absolute top-6 left-6">
           <h1 className="text-4xl font-black text-gray-900 tracking-tighter drop-shadow-md">TagTheTrain</h1>
           <p className="font-bold text-gray-700 bg-white/50 block w-max px-2 py-1 rounded mt-1 shadow-sm">
-            {cars.length + 3} / 100 Carts Hooked
+            {validCars.length + 3} / 100 Carts Hooked
           </p>
         </div>
         
@@ -182,7 +186,7 @@ export default function TrainPage() {
           
           <button 
             onClick={() => cartFileInputRef.current?.click()}
-            disabled={uploading || cars.length >= 97}
+            disabled={uploading || validCars.length >= 97}
             className="relative overflow-hidden bg-green-500 hover:bg-green-400 text-white px-8 py-4 rounded-xl font-black text-lg hover:scale-110 active:scale-95 transition-all shadow-[0_0_25px_rgba(34,197,94,0.7)] disabled:bg-gray-400 flex items-center gap-2 group"
           >
             <div className="absolute inset-0 w-1/2 h-full bg-white/40 glimmer-effect z-10 pointer-events-none"></div>
@@ -198,8 +202,8 @@ export default function TrainPage() {
       <div ref={scrollRef} className="flex-grow flex items-end pb-24 relative overflow-x-auto no-scrollbar pointer-events-auto">
         <div className="flex items-end pl-[20vw] pr-[50vw]">
 
-          {/* 1. MAPPED DB CARTS (Whole cart purchases) */}
-          {cars.map((car, index) => (
+          {/* 1. MAPPED DB CARTS (Filtered to block blank rows) */}
+          {validCars.map((car, index) => (
             <div key={car.id} className="relative flex items-end shrink-0 animate-chugga group cursor-pointer" style={{ animationDelay: `${(index + 1) * 0.05}s` }} onClick={() => handleTagClick(car.id)}>
               <div className="w-4 h-2 bg-gray-800 mb-4 shrink-0"></div>
               
@@ -220,7 +224,7 @@ export default function TrainPage() {
             </div>
           ))}
 
-          {/* 2. STARTER CARTS (Equally spaced, different cool colors, NO wording) */}
+          {/* 2. STARTER CARTS (Exactly 3, evenly spaced, no text) */}
           {[
             { id: 'starter-3', color: 'bg-gradient-to-br from-purple-500 to-purple-800' },
             { id: 'starter-2', color: 'bg-gradient-to-br from-blue-500 to-blue-800' },
@@ -246,7 +250,6 @@ export default function TrainPage() {
 
           {/* 3. THE GOLD ENGINE */}
           <div id="engine" className="relative animate-chugga z-20 flex flex-col items-end shrink-0">
-            {/* Extended spacing connector directly behind the engine */}
             <div className="w-8 h-2 bg-gray-800 absolute left-[-32px] bottom-4 shrink-0 z-0"></div>
             
             {/* Steam Particles */}
@@ -264,7 +267,6 @@ export default function TrainPage() {
               
               <div className="w-12 h-10 bg-sky-200/80 absolute right-2 top-2 rounded-sm border-4 border-yellow-800 z-30 shadow-inner"></div>
               
-              {/* Black Accent Stripe */}
               <div className="w-full h-2 bg-gray-900 absolute bottom-6 left-0 z-20 shadow-sm"></div>
               
               <div className="absolute -bottom-4 flex justify-between w-full px-2 z-10">
