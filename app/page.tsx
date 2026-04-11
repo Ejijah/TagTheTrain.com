@@ -165,29 +165,32 @@ export default function TrainPage() {
       `}} />
 
       {/* --- HEADER & CONTROLS --- */}
-      <div className="absolute top-0 left-0 w-full p-6 z-50 flex justify-between items-start pointer-events-none">
-        <div>
-          {/* Logo animates with the train now! */}
-          <h1 className="text-4xl font-black text-gray-900 tracking-tighter drop-shadow-md animate-chugga inline-block">TagTheTrain</h1>
+      <div className="absolute top-0 left-0 w-full h-32 z-50 pointer-events-none">
+        
+        {/* Logo (Top Left) */}
+        <div className="absolute top-6 left-6">
+          <h1 className="text-4xl font-black text-gray-900 tracking-tighter drop-shadow-md">TagTheTrain</h1>
           <p className="font-bold text-gray-700 bg-white/50 block w-max px-2 py-1 rounded mt-1 shadow-sm">
             {cars.length + 3} / 100 Carts Hooked
           </p>
         </div>
         
-        <div className="flex flex-col items-end pointer-events-auto">
+        {/* Centered Buy Button */}
+        <div className="absolute top-6 left-1/2 transform -translate-x-1/2 flex flex-col items-center pointer-events-auto">
           <input type="file" accept="image/png, image/jpeg" className="hidden" ref={cartFileInputRef} onChange={handleBuyCart} />
           <input type="file" accept="image/png, image/jpeg" className="hidden" ref={tagFileInputRef} onChange={handleTagUpload} />
           
-          {/* Popping Green Glimmery Button */}
           <button 
             onClick={() => cartFileInputRef.current?.click()}
             disabled={uploading || cars.length >= 97}
-            className="relative overflow-hidden bg-green-500 hover:bg-green-400 text-white px-8 py-4 rounded-xl font-black text-lg hover:scale-110 active:scale-95 transition-all shadow-[0_0_20px_rgba(34,197,94,0.6)] disabled:bg-gray-400 flex items-center gap-2 group"
+            className="relative overflow-hidden bg-green-500 hover:bg-green-400 text-white px-8 py-4 rounded-xl font-black text-lg hover:scale-110 active:scale-95 transition-all shadow-[0_0_25px_rgba(34,197,94,0.7)] disabled:bg-gray-400 flex items-center gap-2 group"
           >
             <div className="absolute inset-0 w-1/2 h-full bg-white/40 glimmer-effect z-10 pointer-events-none"></div>
             <span className="relative z-20">{uploading ? 'Uploading...' : 'Buy New Cart - $5'}</span>
           </button>
-          <p className="text-xs font-bold text-gray-700 mt-2 bg-white/40 px-2 py-1 rounded">Or click a cart below to Tag it for $1</p>
+          <p className="text-xs font-bold text-gray-700 mt-2 bg-white/40 px-3 py-1 rounded shadow-sm text-center">
+            Or click any cart to Tag it for $1
+          </p>
         </div>
       </div>
 
@@ -217,19 +220,17 @@ export default function TrainPage() {
             </div>
           ))}
 
-          {/* 2. STARTER CARTS (Equally spaced, different cool colors) */}
+          {/* 2. STARTER CARTS (Equally spaced, different cool colors, NO wording) */}
           {[
             { id: 'starter-3', color: 'bg-gradient-to-br from-purple-500 to-purple-800' },
             { id: 'starter-2', color: 'bg-gradient-to-br from-blue-500 to-blue-800' },
             { id: 'starter-1', color: 'bg-gradient-to-br from-red-500 to-red-800' },
-          ].map((starter, i) => (
+          ].map((starter) => (
             <div key={starter.id} className="relative flex items-end shrink-0 animate-chugga group cursor-pointer" style={{ animationDelay: '0.1s' }} onClick={() => handleTagClick(starter.id)}>
               <div className="w-4 h-2 bg-gray-800 mb-4 shrink-0"></div>
               
               <div className={`w-40 h-24 ${starter.color} rounded-md relative shadow-md flex items-center justify-center border-b-4 border-gray-900 border-t border-white/20 overflow-hidden group-hover:brightness-125 transition-all`}>
                 
-                <span className="text-white/30 font-black uppercase tracking-widest text-xl rotate-[-5deg]">Cart {3 - i}</span>
-
                 {/* Hover overlay for Tagging */}
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity z-20">
                   <span className="text-white font-black text-sm drop-shadow-md">Tag Cart - $1</span>
@@ -243,9 +244,10 @@ export default function TrainPage() {
             </div>
           ))}
 
-          {/* 3. THE ENGINE */}
+          {/* 3. THE GOLD ENGINE */}
           <div id="engine" className="relative animate-chugga z-20 flex flex-col items-end shrink-0">
-            <div className="w-4 h-2 bg-gray-800 absolute left-[-16px] bottom-4 shrink-0"></div>
+            {/* Extended spacing connector directly behind the engine */}
+            <div className="w-8 h-2 bg-gray-800 absolute left-[-32px] bottom-4 shrink-0 z-0"></div>
             
             {/* Steam Particles */}
             <div className="absolute -top-4 right-10 w-4 h-4 pointer-events-none z-0">
@@ -257,17 +259,22 @@ export default function TrainPage() {
 
             <div className="w-6 h-12 bg-gray-800 mr-8 rounded-t-sm z-10"></div>
             
-            <div className="w-32 h-24 bg-gray-900 rounded-tl-3xl rounded-tr-xl flex flex-col justify-end p-2 relative shadow-lg border-b-4 border-black border-t border-white/20">
+            {/* Gold Body */}
+            <div className="w-32 h-24 bg-gradient-to-br from-yellow-300 via-yellow-500 to-yellow-600 rounded-tl-3xl rounded-tr-xl flex flex-col justify-end p-2 relative shadow-lg border-b-4 border-yellow-800 border-t border-white/60">
               
-              <div className="w-12 h-10 bg-sky-200/80 absolute right-2 top-2 rounded-sm border-4 border-gray-700 z-30 shadow-inner"></div>
-              <div className="w-full h-2 bg-yellow-500 absolute bottom-6 left-0 z-20 shadow-sm"></div>
+              <div className="w-12 h-10 bg-sky-200/80 absolute right-2 top-2 rounded-sm border-4 border-yellow-800 z-30 shadow-inner"></div>
+              
+              {/* Black Accent Stripe */}
+              <div className="w-full h-2 bg-gray-900 absolute bottom-6 left-0 z-20 shadow-sm"></div>
               
               <div className="absolute -bottom-4 flex justify-between w-full px-2 z-10">
                 <div className="w-10 h-10 realistic-wheel animate-wheel"></div>
                 <div className="w-10 h-10 realistic-wheel animate-wheel"></div>
               </div>
             </div>
-            <div className="w-10 h-10 bg-gray-700 absolute -right-6 bottom-0 rotate-45 transform translate-y-2 -z-10 shadow-lg"></div>
+            
+            {/* Gold Cowcatcher */}
+            <div className="w-10 h-10 bg-gradient-to-br from-yellow-500 to-yellow-600 border-r-2 border-b-2 border-yellow-700 absolute -right-6 bottom-0 rotate-45 transform translate-y-2 -z-10 shadow-lg"></div>
           </div>
 
         </div>
